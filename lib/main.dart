@@ -1,10 +1,9 @@
 import 'package:flutter/material.dart';
 
 import 'package:expense_tracker/expenses.dart';
-import 'package:flutter/services.dart';
 
 var kColorSchema = ColorScheme.fromSeed(
-  seedColor: Color.fromARGB(255, 181, 59, 65),
+  seedColor: const Color.fromARGB(255, 83, 181, 59),
 );
 
 var kDarkColorSchema = ColorScheme.fromSeed(
@@ -32,7 +31,6 @@ void main() {
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             backgroundColor: kDarkColorSchema.primaryContainer,
-            foregroundColor: kColorSchema.onPrimaryContainer,
           ),
         ),
       ),

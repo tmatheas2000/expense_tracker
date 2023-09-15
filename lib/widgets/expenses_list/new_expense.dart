@@ -4,6 +4,8 @@ import 'package:expense_tracker/models/expense.dart';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 final formatter = DateFormat.yMd();
 
@@ -23,6 +25,7 @@ class _NewExpenseState extends State<NewExpense> {
   final _amountController = TextEditingController();
   DateTime? _selectedDate;
   Category _selectedCategory = Category.leisure;
+  var _isSending = false;
 
   void _presentDatePicker() async {
     final now = DateTime.now();
@@ -77,7 +80,7 @@ class _NewExpenseState extends State<NewExpense> {
     }
   }
 
-  void submitExpenseData() {
+  void submitExpenseData() async {
     final enteredAmount = double.tryParse(_amountController.text);
     final amountIsInvalid = enteredAmount == null || enteredAmount <= 0;
     if (_titleController.text.trim().isEmpty ||
@@ -86,12 +89,38 @@ class _NewExpenseState extends State<NewExpense> {
       _showDialog();
       return;
     }
-    widget.onAddExpense(Expense(
-        title: _titleController.text,
-        amount: enteredAmount,
-        date: _selectedDate!,
-        category: _selectedCategory));
-    Navigator.pop(context);
+    setState(() {
+      _isSending = true;
+    });
+    final url =
+        Uri.https('fir-intro-4b6a4.firebaseio.com', 'expense-list.json');
+    final response = await http.post(url,
+        headers: {'Content-Type': 'application/json'},
+        body: json.encode({
+          'title': _titleController.text,
+          'amount': enteredAmount,
+          'date': _selectedDate!.millisecondsSinceEpoch,
+          'category': _selectedCategory.name
+        }));
+
+    final Map<String, dynamic> resData = json.decode(response.body);
+
+    if (!context.mounted) {
+      return;
+    }
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      setState(() {
+        _isSending = false;
+      });
+      widget.onAddExpense(Expense(
+          id: resData['name'],
+          title: _titleController.text,
+          amount: enteredAmount,
+          date: _selectedDate!,
+          category: _selectedCategory));
+      Navigator.pop(context);
+    }
   }
 
   @override
@@ -139,7 +168,7 @@ class _NewExpenseState extends State<NewExpense> {
                           controller: _amountController,
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(
-                            prefixText: '\$ ',
+                            prefixText: '\₹ ',
                             label: Text('Amount'),
                           ),
                         ),
@@ -204,7 +233,7 @@ class _NewExpenseState extends State<NewExpense> {
                           controller: _amountController,
                           keyboardType: TextInputType.number,
                           decoration: const InputDecoration(
-                            prefixText: '\$ ',
+                            prefixText: '\₹ ',
                             label: Text('Amount'),
                           ),
                         ),
@@ -273,13 +302,21 @@ class _NewExpenseState extends State<NewExpense> {
                       const Spacer(),
                       TextButton(
                         onPressed: () {
-                          Navigator.pop(context);
+                          if (!_isSending) {
+                            Navigator.pop(context);
+                          }
                         },
                         child: const Text('Cancel'),
                       ),
                       ElevatedButton(
-                        onPressed: submitExpenseData,
-                        child: const Text('Save Expense'),
+                        onPressed: _isSending ? null : submitExpenseData,
+                        child: _isSending
+                            ? const SizedBox(
+                                height: 16,
+                                width: 16,
+                                child: CircularProgressIndicator(),
+                              )
+                            : const Text('Save Expense'),
                       ),
                     ],
                   ),
